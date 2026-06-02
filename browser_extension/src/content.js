@@ -1,5 +1,9 @@
 const crownLinkGuardSafeCache = new Map();
 const CROWN_LINK_GUARD_CACHE_MS = 10 * 60 * 1000;
+const CROWN_LINK_GUARD_INTERNAL_HOSTS = [
+  "desk.zoho.com",
+  "support.stayzltd.com"
+];
 
 function crownLinkGuardTicketId() {
   const match = window.location.href.match(/tickets\/(\d+)/i) || window.location.href.match(/[?&]ticketId=(\d+)/i);
@@ -18,6 +22,32 @@ function crownLinkGuardIsSafeCached(url) {
 
 function crownLinkGuardOpen(url) {
   window.open(url, "_blank", "noopener");
+}
+
+function crownLinkGuardInternalHost(hostname) {
+  return CROWN_LINK_GUARD_INTERNAL_HOSTS.includes(hostname) || hostname.endsWith(".zohodesk.com") || hostname.endsWith(".zoho.com");
+}
+
+function crownLinkGuardShouldScan(anchor) {
+  const rawHref = anchor.getAttribute("href") || "";
+  const trimmedHref = rawHref.trim().toLowerCase();
+
+  if (!trimmedHref || trimmedHref.startsWith("#")) return false;
+  if (trimmedHref.startsWith("mailto:") || trimmedHref.startsWith("tel:")) return false;
+  if (trimmedHref.startsWith("javascript:") || trimmedHref.startsWith("void(")) return false;
+
+  let destination;
+  try {
+    destination = new URL(anchor.href, window.location.href);
+  } catch (_error) {
+    return false;
+  }
+
+  if (!["http:", "https:"].includes(destination.protocol)) return false;
+  if (destination.origin === window.location.origin) return false;
+  if (crownLinkGuardInternalHost(destination.hostname)) return false;
+
+  return true;
 }
 
 function crownLinkGuardHiddenLink(anchor) {
@@ -39,7 +69,7 @@ async function crownLinkGuardScan(url, anchor) {
 
 document.addEventListener("click", async (event) => {
   const anchor = event.target.closest && event.target.closest("a[href]");
-  if (!anchor || !anchor.href || anchor.href.startsWith("mailto:") || anchor.href.startsWith("tel:")) return;
+  if (!anchor || !crownLinkGuardShouldScan(anchor)) return;
 
   event.preventDefault();
   event.stopPropagation();
