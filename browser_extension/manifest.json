@@ -4,10 +4,10 @@
   "version": "1.0.0",
   "description": "Checks Zoho Desk links before Crown agents open them.",
   "permissions": ["storage", "activeTab", "scripting"],
-  "host_permissions": ["https://desk.zoho.com/*", "http://localhost:3000/*", "https://linkguard.crownbs.local/*"],
+  "host_permissions": ["https://desk.zoho.com/*", "https://*.zohodesk.com/*", "https://support.stayzltd.com/*", "http://localhost:3000/*", "https://linkguard.crownbs.local/*"],
   "content_scripts": [
     {
-      "matches": ["https://desk.zoho.com/*", "https://*.zohodesk.com/*"],
+      "matches": ["https://desk.zoho.com/*", "https://*.zohodesk.com/*", "https://support.stayzltd.com/*"],
       "js": ["src/config.js", "src/api.js", "src/modal.js", "src/content.js"],
       "run_at": "document_start"
     }
