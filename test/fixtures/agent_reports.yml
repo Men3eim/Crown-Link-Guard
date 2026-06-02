@@ -1,0 +1,35 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  original_url: MyText
+  normalized_url: MyText
+  domain: MyString
+  ticket_url: MyText
+  ticket_id: MyString
+  agent_email: MyString
+  agent_name: MyString
+  agent_note: MyText
+  risk_score: 1
+  risk_level: MyString
+  reasons: 
+  status: MyString
+  reviewer_email: MyString
+  reviewer_note: MyText
+  reviewed_at: 2026-06-02 18:04:15
+
+two:
+  original_url: MyText
+  normalized_url: MyText
+  domain: MyString
+  ticket_url: MyText
+  ticket_id: MyString
+  agent_email: MyString
+  agent_name: MyString
+  agent_note: MyText
+  risk_score: 1
+  risk_level: MyString
+  reasons: 
+  status: MyString
+  reviewer_email: MyString
+  reviewer_note: MyText
+  reviewed_at: 2026-06-02 18:04:15

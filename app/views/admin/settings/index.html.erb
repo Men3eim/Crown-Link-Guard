@@ -1,0 +1,15 @@
+<h1>Settings</h1>
+
+<section class="panel">
+  <%= form_with url: admin_settings_path, method: :patch, local: true do %>
+    <div class="grid">
+      <% (SecuritySetting::DEFAULTS.keys + ["api_token"]).uniq.each do |key| %>
+        <div class="field">
+          <%= label_tag "settings_#{key}", key.humanize %>
+          <%= text_field_tag "settings[#{key}]", SecuritySetting.find_by(key: key)&.value || SecuritySetting::DEFAULTS[key], id: "settings_#{key}" %>
+        </div>
+      <% end %>
+    </div>
+    <p><%= submit_tag "Save settings", class: "button" %></p>
+  <% end %>
+</section>

@@ -1,0 +1,15 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  domain: MyString
+  allow_subdomains: false
+  notes: MyText
+  created_by: MyString
+  active: false
+
+two:
+  domain: MyString
+  allow_subdomains: false
+  notes: MyText
+  created_by: MyString
+  active: false

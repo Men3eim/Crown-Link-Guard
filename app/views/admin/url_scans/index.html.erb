@@ -1,0 +1,44 @@
+<h1>URL Scans</h1>
+
+<section class="panel">
+  <%= form_with url: admin_url_scans_path, method: :get, local: true, class: "filters" do %>
+    <div class="field"><%= label_tag :agent_email %><%= text_field_tag :agent_email, params[:agent_email] %></div>
+    <div class="field"><%= label_tag :domain %><%= text_field_tag :domain, params[:domain] %></div>
+    <div class="field"><%= label_tag :risk_level %><%= select_tag :risk_level, options_for_select([["Any", ""]] + UrlScan::RISK_LEVELS.map { |v| [v, v] }, params[:risk_level]) %></div>
+    <div class="field"><%= label_tag :action_taken %><%= select_tag :action_taken, options_for_select([["Any", ""]] + UrlScan::ACTIONS.map { |v| [v, v] }, params[:action_taken]) %></div>
+    <%= submit_tag "Filter", class: "button" %>
+    <%= link_to "Export CSV", admin_url_scans_path(request.query_parameters.merge(format: :csv)), class: "button secondary" %>
+  <% end %>
+
+  <table>
+    <thead>
+      <tr><th>Date/time</th><th>Agent</th><th>URL</th><th>Domain</th><th>Risk</th><th>Action</th><th>Ticket</th><th>Reasons</th><th>Admin</th></tr>
+    </thead>
+    <tbody>
+      <% @url_scans.each do |scan| %>
+        <tr>
+          <td><%= l(scan.created_at, format: :short) %></td>
+          <td><%= scan.agent_email.presence || "-" %></td>
+          <td class="url"><%= scan.normalized_url.presence || scan.original_url %></td>
+          <td><%= scan.domain.presence || "-" %></td>
+          <td><span class="badge <%= scan.risk_level %>"><%= scan.risk_score %> <%= scan.risk_level %></span></td>
+          <td><%= scan.action_taken %></td>
+          <td class="url"><%= link_to("Ticket", scan.ticket_url, target: "_blank", rel: "noopener") if scan.ticket_url.present? %></td>
+          <td>
+            <ul class="reasons">
+              <% Array(scan.reasons).each do |reason| %>
+                <li><%= reason %></li>
+              <% end %>
+            </ul>
+          </td>
+          <td class="actions">
+            <% if scan.domain.present? %>
+              <%= button_to "Allow", allow_domain_admin_url_scan_path(scan), method: :post, class: "secondary" %>
+              <%= button_to "Block", block_domain_admin_url_scan_path(scan), method: :post, class: "danger" %>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</section>

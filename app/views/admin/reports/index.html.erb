@@ -1,0 +1,44 @@
+<h1>Agent Reports</h1>
+
+<section class="panel">
+  <%= form_with url: admin_reports_path, method: :get, local: true, class: "filters" do %>
+    <div class="field"><%= label_tag :agent_email %><%= text_field_tag :agent_email, params[:agent_email] %></div>
+    <div class="field"><%= label_tag :domain %><%= text_field_tag :domain, params[:domain] %></div>
+    <div class="field"><%= label_tag :status %><%= select_tag :status, options_for_select([["Any", ""]] + AgentReport::STATUSES.map { |v| [v, v] }, params[:status]) %></div>
+    <%= submit_tag "Filter", class: "button" %>
+    <%= link_to "Export CSV", admin_reports_path(request.query_parameters.merge(format: :csv)), class: "button secondary" %>
+  <% end %>
+
+  <table>
+    <thead>
+      <tr><th>Date/time</th><th>Agent</th><th>URL</th><th>Domain</th><th>Ticket</th><th>Risk</th><th>Status</th><th>Note</th><th>Review</th><th>Admin</th></tr>
+    </thead>
+    <tbody>
+      <% @reports.each do |report| %>
+        <tr>
+          <td><%= l(report.created_at, format: :short) %></td>
+          <td><%= report.agent_email.presence || "-" %></td>
+          <td class="url"><%= report.normalized_url.presence || report.original_url %></td>
+          <td><%= report.domain.presence || "-" %></td>
+          <td class="url"><%= link_to("Ticket", report.ticket_url, target: "_blank", rel: "noopener") if report.ticket_url.present? %></td>
+          <td><span class="badge <%= report.risk_level %>"><%= report.risk_level %></span></td>
+          <td><span class="badge <%= report.status %>"><%= report.status %></span></td>
+          <td><%= report.agent_note %></td>
+          <td>
+            <%= form_with model: [:admin, report], local: true do |form| %>
+              <div class="field"><%= form.select :status, AgentReport::STATUSES.map { |v| [v, v] } %></div>
+              <div class="field"><%= form.text_area :reviewer_note, placeholder: "Reviewer note" %></div>
+              <%= form.submit "Save", class: "button" %>
+            <% end %>
+          </td>
+          <td class="actions">
+            <% if report.domain.present? %>
+              <%= button_to "Allow", allow_domain_admin_report_path(report), method: :post, class: "secondary" %>
+              <%= button_to "Block", block_domain_admin_report_path(report), method: :post, class: "danger" %>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</section>

@@ -1,0 +1,18 @@
+<h1>Audit Logs</h1>
+
+<section class="panel">
+  <table>
+    <thead><tr><th>Date/time</th><th>User</th><th>Action</th><th>Record</th><th>Metadata</th></tr></thead>
+    <tbody>
+      <% @audit_logs.each do |log| %>
+        <tr>
+          <td><%= l(log.created_at, format: :short) %></td>
+          <td><%= log.user_email.presence || "-" %></td>
+          <td><%= log.action %></td>
+          <td><%= [log.record_type, log.record_id].compact.join(" #") %></td>
+          <td><%= log.metadata %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</section>

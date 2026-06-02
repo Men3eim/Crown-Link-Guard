@@ -1,0 +1,33 @@
+<table>
+  <thead>
+    <tr>
+      <th>Date/time</th>
+      <th>Agent</th>
+      <th>URL</th>
+      <th>Domain</th>
+      <th>Risk</th>
+      <th>Action</th>
+      <th>Ticket</th>
+      <th>Reasons</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% scans.each do |scan| %>
+      <tr>
+        <td><%= l(scan.created_at, format: :short) %></td>
+        <td><%= scan.agent_email.presence || "-" %></td>
+        <td class="url"><%= scan.normalized_url.presence || scan.original_url %></td>
+        <td><%= scan.domain.presence || "-" %></td>
+        <td><span class="badge <%= scan.risk_level %>"><%= scan.risk_score %> <%= scan.risk_level %></span></td>
+        <td><%= scan.action_taken %></td>
+        <td class="url"><%= link_to("Ticket", scan.ticket_url, target: "_blank", rel: "noopener") if scan.ticket_url.present? %></td>
+        <td>
+          <ul class="reasons">
+            <% Array(scan.reasons).each do |reason| %><li><%= reason %></li><% end %>
+          </ul>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+<p class="muted"><%= "No records yet." if scans.blank? %></p>

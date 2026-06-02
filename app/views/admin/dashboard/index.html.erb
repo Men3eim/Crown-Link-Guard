@@ -1,0 +1,36 @@
+<h1>Dashboard</h1>
+
+<section class="grid">
+  <div class="card"><strong><%= @stats[:total_today] %></strong><span>Total scanned links today</span></div>
+  <div class="card"><strong><%= @stats[:blocked_today] %></strong><span>Blocked links today</span></div>
+  <div class="card"><strong><%= @stats[:high_risk_today] %></strong><span>High-risk links today</span></div>
+  <div class="card"><strong><%= @stats[:medium_risk_today] %></strong><span>Medium-risk links today</span></div>
+  <div class="card"><strong><%= @stats[:pending_reports] %></strong><span>Pending reports</span></div>
+  <div class="card"><strong><%= @stats[:phishing_reports] %></strong><span>Confirmed phishing reports</span></div>
+</section>
+
+<section class="panel">
+  <h2>Top Suspicious Domains</h2>
+  <% if @top_suspicious_domains.any? %>
+    <table>
+      <thead><tr><th>Domain</th><th>Count</th></tr></thead>
+      <tbody>
+        <% @top_suspicious_domains.each do |domain, count| %>
+          <tr><td><%= domain %></td><td><%= count %></td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="muted">No suspicious domains yet.</p>
+  <% end %>
+</section>
+
+<section class="panel">
+  <h2>Recent Scans</h2>
+  <%= render "admin/shared/url_scans_table", scans: @recent_scans %>
+</section>
+
+<section class="panel">
+  <h2>Recent Reports</h2>
+  <%= render "admin/shared/reports_table", reports: @recent_reports %>
+</section>

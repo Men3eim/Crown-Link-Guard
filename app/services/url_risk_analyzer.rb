@@ -1,0 +1,164 @@
+class UrlRiskAnalyzer
+  SHORTENERS = %w[bit.ly tinyurl.com cutt.ly t.co shorturl.at].freeze
+  SUSPICIOUS_KEYWORDS = %w[payment verify secure login update account reservation billing partner support confirmation invoice].freeze
+  SUSPICIOUS_TLDS = %w[xyz top tk info click site online].freeze
+
+  def self.call(url, metadata = {})
+    new(url, metadata).call
+  end
+
+  def initialize(url, metadata = {})
+    @url = url
+    @metadata = metadata || {}
+    @normalizer = UrlNormalizer.call(url)
+    @reasons = []
+    @score = 0
+  end
+
+  def call
+    return invalid_result unless @normalizer.valid
+
+    @matcher = DomainMatcher.new(@normalizer.domain)
+    apply_domain_rules
+    apply_url_rules
+    @score = [[@score, 0].max, 100].min
+
+    {
+      original_url: @normalizer.original_url,
+      normalized_url: @normalizer.normalized_url,
+      domain: @normalizer.domain,
+      root_domain: @normalizer.root_domain,
+      risk_score: @score,
+      risk_level: risk_level,
+      action: action,
+      reasons: @reasons.uniq,
+      message: message,
+      allow_continue_on_medium: SecuritySetting.boolean("allow_continue_on_medium"),
+      allow_continue_on_high: SecuritySetting.boolean("allow_continue_on_high")
+    }
+  end
+
+  private
+
+  def invalid_result
+    {
+      original_url: @normalizer.original_url,
+      normalized_url: nil,
+      domain: nil,
+      root_domain: nil,
+      risk_score: 90,
+      risk_level: "blocked",
+      action: "block",
+      reasons: ["Invalid or unsupported URL: #{@normalizer.error}"],
+      message: "This link has been blocked because it is not a valid web URL.",
+      allow_continue_on_medium: SecuritySetting.boolean("allow_continue_on_medium"),
+      allow_continue_on_high: SecuritySetting.boolean("allow_continue_on_high")
+    }
+  end
+
+  def apply_domain_rules
+    if (blocked = @matcher.blocklist_match)
+      @score += 100
+      @reasons << "Domain is on the company blocklist (#{blocked.severity})"
+      return
+    end
+
+    if (allowed = @matcher.allowlist_match)
+      @score += @normalizer.scheme == "https" ? 5 : 15
+      @reasons << "Official allowlisted domain"
+      @reasons << "Approved subdomain of #{allowed.domain}" if @normalizer.domain != allowed.domain
+    else
+      @score += 25
+      @reasons << "Domain is not allowlisted"
+    end
+
+    if @matcher.fake_trusted_domain_trick?
+      @score += 55
+      @reasons << "Fake official-domain subdomain trick detected"
+    elsif @matcher.resembles_trusted_domain?
+      @score += 35
+      @reasons << "Domain looks similar to an official Crown or OTA domain but is not official"
+    end
+  end
+
+  def apply_url_rules
+    url_downcase = @normalizer.normalized_url.to_s.downcase
+    domain = @normalizer.domain.to_s
+    labels = domain.split(".")
+
+    if SHORTENERS.include?(domain)
+      @score += 55
+      @reasons << "URL shortener detected; final destination cannot be verified"
+    end
+
+    keyword_hits = SUSPICIOUS_KEYWORDS.select { |keyword| url_downcase.include?(keyword) }
+    if keyword_hits.any?
+      @score += [keyword_hits.length * 12, 36].min
+      @reasons << "URL contains #{keyword_hits.join(', ')} keyword indicators"
+    end
+
+    if domain.include?("booking") && !domain.end_with?("booking.com")
+      @score += 25
+      @reasons << "URL contains booking but is not Booking.com"
+    end
+
+    if SUSPICIOUS_TLDS.include?(domain.split(".").last)
+      @score += 25
+      @reasons << "Suspicious top-level domain detected"
+    end
+
+    if @normalizer.ip_address
+      @score += 35
+      @reasons << "URL uses an IP address instead of a normal domain"
+    end
+
+    if labels.length > 4
+      @score += 15
+      @reasons << "Domain has too many subdomains"
+    end
+
+    if @normalizer.punycode || url_downcase.match?(/%[0-9a-f]{2}/)
+      @score += 20
+      @reasons << "URL contains encoded or unusual domain characters"
+    end
+
+    if @normalizer.scheme == "http"
+      @score += 20
+      @reasons << "URL uses HTTP instead of HTTPS"
+    end
+
+    if ActiveModel::Type::Boolean.new.cast(@metadata[:hidden_link])
+      @score += 15
+      @reasons << "Link may be hidden behind an image or button"
+    end
+  end
+
+  def risk_level
+    return "blocked" if @score >= SecuritySetting.integer("blocked_threshold")
+    return "high_risk" if @score >= SecuritySetting.integer("high_risk_threshold")
+    return "medium_risk" if @score >= SecuritySetting.integer("medium_risk_threshold")
+
+    "safe"
+  end
+
+  def action
+    case risk_level
+    when "safe" then "allow"
+    when "medium_risk", "high_risk" then "warn"
+    else "block"
+    end
+  end
+
+  def message
+    case risk_level
+    when "safe"
+      "This link appears safe based on current Crown Link Guard rules."
+    when "medium_risk"
+      "Careful - this link may be unsafe. Please verify it before opening."
+    when "high_risk"
+      "This link looks suspicious. Please verify with a Team Leader, senior agent, or Ahmed Moniem."
+    else
+      "This link has been blocked because it matches phishing indicators."
+    end
+  end
+end

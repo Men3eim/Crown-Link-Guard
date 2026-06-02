@@ -1,0 +1,29 @@
+<table>
+  <thead>
+    <tr>
+      <th>Date/time</th>
+      <th>Agent</th>
+      <th>URL</th>
+      <th>Domain</th>
+      <th>Ticket</th>
+      <th>Risk</th>
+      <th>Status</th>
+      <th>Reviewer</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% reports.each do |report| %>
+      <tr>
+        <td><%= l(report.created_at, format: :short) %></td>
+        <td><%= report.agent_email.presence || "-" %></td>
+        <td class="url"><%= report.normalized_url.presence || report.original_url %></td>
+        <td><%= report.domain.presence || "-" %></td>
+        <td class="url"><%= link_to("Ticket", report.ticket_url, target: "_blank", rel: "noopener") if report.ticket_url.present? %></td>
+        <td><span class="badge <%= report.risk_level %>"><%= report.risk_score %> <%= report.risk_level %></span></td>
+        <td><span class="badge <%= report.status %>"><%= report.status %></span></td>
+        <td><%= report.reviewer_email.presence || "-" %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+<p class="muted"><%= "No records yet." if reports.blank? %></p>

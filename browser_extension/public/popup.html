@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <style>
+      body { width: 330px; margin: 0; padding: 14px; font-family: Arial, sans-serif; color: #17212b; }
+      h1 { margin: 0 0 10px; font-size: 18px; }
+      .row { margin: 9px 0; }
+      label { display: block; color: #52616f; font-size: 12px; margin-bottom: 4px; }
+      input { width: 100%; box-sizing: border-box; border: 1px solid #cbd5df; border-radius: 6px; padding: 7px; }
+      button { border: 0; border-radius: 6px; padding: 8px 10px; background: #126b7f; color: #fff; cursor: pointer; }
+      .status { font-weight: 700; }
+      .muted { color: #52616f; font-size: 12px; word-break: break-word; }
+    </style>
+  </head>
+  <body>
+    <h1>Crown Link Guard</h1>
+    <p>Status: <span id="status" class="status">Checking...</span></p>
+    <form id="settings">
+      <div class="row"><label for="apiUrl">Backend URL</label><input id="apiUrl"></div>
+      <div class="row"><label for="apiToken">API token</label><input id="apiToken" type="password"></div>
+      <div class="row"><label for="agentEmail">Agent email</label><input id="agentEmail" type="email"></div>
+      <div class="row"><label for="agentName">Agent name</label><input id="agentName"></div>
+      <button type="submit">Save</button>
+    </form>
+    <p class="muted">Extension version: 1.0.0</p>
+    <p class="muted">Last scanned: <span id="lastScanned"></span></p>
+    <p class="muted">Last risk: <span id="lastRisk"></span></p>
+    <script src="../src/config.js"></script>
+    <script src="../src/api.js"></script>
+    <script src="../src/popup.js"></script>
+  </body>
+</html>

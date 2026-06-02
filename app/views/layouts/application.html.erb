@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Crown Link Guard</title>
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= stylesheet_link_tag 'application', media: 'all' %>
+  </head>
+
+  <body>
+    <% if current_user&.admin? %>
+      <header class="topbar">
+        <div>
+          <strong>Crown Link Guard</strong>
+          <span>Internal phishing link protection</span>
+        </div>
+        <nav>
+          <%= link_to "Dashboard", admin_root_path %>
+          <%= link_to "URL Scans", admin_url_scans_path %>
+          <%= link_to "Reports", admin_reports_path %>
+          <%= link_to "Allowlist", admin_allowlisted_domains_path %>
+          <%= link_to "Blocklist", admin_blocked_domains_path %>
+          <%= link_to "Settings", admin_settings_path %>
+          <%= link_to "Audit", admin_audit_logs_path %>
+          <%= button_to "Logout", admin_logout_path, method: :delete, class: "link-button" %>
+        </nav>
+      </header>
+    <% end %>
+
+    <main class="page">
+      <% if notice.present? %><p class="flash notice"><%= notice %></p><% end %>
+      <% if alert.present? %><p class="flash alert"><%= alert %></p><% end %>
+      <%= yield %>
+    </main>
+  </body>
+</html>

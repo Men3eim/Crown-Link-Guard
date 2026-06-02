@@ -1,0 +1,16 @@
+<section class="login-page panel">
+  <h1>Crown Link Guard</h1>
+  <p class="muted">Admin dashboard login</p>
+
+  <%= form_with url: admin_login_path, local: true do %>
+    <div class="field">
+      <%= label_tag :email, "Email" %>
+      <%= email_field_tag :email, nil, required: true, autofocus: true %>
+    </div>
+    <div class="field">
+      <%= label_tag :password, "Password" %>
+      <%= password_field_tag :password, nil, required: true %>
+    </div>
+    <p><%= submit_tag "Login", class: "button" %></p>
+  <% end %>
+</section>
