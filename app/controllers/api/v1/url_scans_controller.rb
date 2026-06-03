@@ -11,6 +11,6 @@ class Api::V1::UrlScansController < Api::V1::BaseController
   private
 
   def scan_params
-    params.permit(:url, :ticket_url, :ticket_id, :agent_email, :agent_name, :device_name, :source, :hidden_link)
+    params.permit(:url, :ticket_url, :page_url, :page_domain, :ticket_id, :agent_email, :agent_name, :device_name, :source, :hidden_link, :link_text)
   end
 end

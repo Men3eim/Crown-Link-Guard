@@ -5,6 +5,7 @@ class UrlRiskAnalyzer
   DANGEROUS_FILE_EXTENSIONS = %w[exe scr bat cmd com pif js jse vbs vbe msi ps1 iso img dmg apk jar].freeze
   RISKY_FILE_EXTENSIONS = %w[zip rar 7z gz html htm pdf doc docx xls xlsx].freeze
   REDIRECT_PARAMETERS = %w[url uri redirect redirect_uri return return_url continue next target destination dest].freeze
+  VISIBLE_URL_REGEX = %r{(?:https?://)?(?:www\.)?[a-z0-9.-]+\.[a-z]{2,}(?:/[^\s<>"']*)?}i
 
   def self.call(url, metadata = {})
     new(url, metadata).call
@@ -71,8 +72,8 @@ class UrlRiskAnalyzer
       @reasons << "Official allowlisted domain"
       @reasons << "Approved subdomain of #{allowed.domain}" if @normalizer.domain != allowed.domain
     else
-      @score += 25
-      @reasons << "Domain is not allowlisted"
+      @score += browser_wide_source? ? 10 : 20
+      @reasons << "Domain is not allowlisted yet"
     end
 
     if @matcher.fake_trusted_domain_trick?
@@ -89,6 +90,7 @@ class UrlRiskAnalyzer
     domain = @normalizer.domain.to_s
     labels = domain.split(".")
     uri = URI.parse(@normalizer.normalized_url)
+    apply_link_text_rules
 
     if SHORTENERS.include?(domain)
       @score += 55
@@ -158,7 +160,7 @@ class UrlRiskAnalyzer
 
     file_extension = File.extname(uri.path.to_s).delete(".").downcase
     if DANGEROUS_FILE_EXTENSIONS.include?(file_extension)
-      @score += 60
+      @score += 75
       @reasons << "URL points to a potentially dangerous executable or script file"
     elsif RISKY_FILE_EXTENSIONS.include?(file_extension)
       @score += 15
@@ -170,13 +172,42 @@ class UrlRiskAnalyzer
       @reasons << "URL contains a redirect parameter that may hide the final destination"
     end
 
-    if ActiveModel::Type::Boolean.new.cast(@metadata[:hidden_link])
-      @score += 15
-      @reasons << "Link may be hidden behind an image or button"
+    if ActiveModel::Type::Boolean.new.cast(@metadata[:hidden_link]) && suspicious_context?
+      @score += 10
+      @reasons << "Suspicious link is hidden behind an image or button"
     end
   rescue URI::InvalidURIError
     @score += 30
     @reasons << "URL structure is unusual and could not be parsed cleanly"
+  end
+
+  def apply_link_text_rules
+    link_text = @metadata[:link_text].to_s.strip
+    return if link_text.blank?
+
+    visible_domains = link_text.scan(VISIBLE_URL_REGEX).map { |candidate| normalized_visible_domain(candidate) }.compact.uniq
+    destination_root = @normalizer.root_domain
+
+    mismatched_domain = visible_domains.find { |visible_domain| visible_domain != destination_root && !@normalizer.domain.end_with?(".#{visible_domain}") }
+    if mismatched_domain
+      @score += 65
+      @reasons << "Visible link text shows #{mismatched_domain}, but the real destination is #{@normalizer.domain}"
+    end
+  end
+
+  def normalized_visible_domain(candidate)
+    normalized = UrlNormalizer.call(candidate.match?(/\Ahttps?:\/\//i) ? candidate : "https://#{candidate}")
+    return nil unless normalized.valid && normalized.domain.present?
+
+    normalized.root_domain
+  end
+
+  def suspicious_context?
+    @score >= SecuritySetting.integer("medium_risk_threshold")
+  end
+
+  def browser_wide_source?
+    @metadata[:source].to_s == "browser-wide-extension"
   end
 
   def encoded_redirect_parameter?(query)
@@ -211,7 +242,7 @@ class UrlRiskAnalyzer
   def message
     case risk_level
     when "safe"
-      "This link appears safe based on current Crown Link Guard rules."
+      "This link does not show strong phishing indicators."
     when "medium_risk"
       "Careful - this link may be unsafe. Please verify it before opening."
     when "high_risk"

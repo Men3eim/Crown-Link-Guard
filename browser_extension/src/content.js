@@ -60,16 +60,23 @@ function crownLinkGuardHiddenLink(anchor) {
   return Boolean(anchor.querySelector("img, button, svg")) || !anchor.textContent.trim().includes(anchor.href);
 }
 
+function crownLinkGuardLinkText(anchor) {
+  return (anchor.innerText || anchor.textContent || anchor.getAttribute("aria-label") || anchor.title || "").replace(/\s+/g, " ").trim().slice(0, 500);
+}
+
 async function crownLinkGuardScan(url, anchor) {
   const config = await CrownLinkGuardConfig.get();
   return crownLinkGuardRequest("/api/v1/scan_url", {
     url,
     ticket_url: window.location.href,
+    page_url: window.location.href,
+    page_domain: window.location.hostname,
     ticket_id: crownLinkGuardTicketId(),
     agent_email: config.agentEmail,
     agent_name: config.agentName,
     source: "browser-wide-extension",
-    hidden_link: crownLinkGuardHiddenLink(anchor)
+    hidden_link: crownLinkGuardHiddenLink(anchor),
+    link_text: crownLinkGuardLinkText(anchor)
   });
 }
 

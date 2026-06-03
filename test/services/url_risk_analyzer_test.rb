@@ -20,6 +20,27 @@ class UrlRiskAnalyzerTest < ActiveSupport::TestCase
     assert_includes result[:reasons], "Official allowlisted domain"
   end
 
+  test "normal unknown browser link is safe without phishing indicators" do
+    result = UrlRiskAnalyzer.call("https://example-news-site.com/article/123", source: "browser-wide-extension")
+
+    assert_equal "safe", result[:risk_level]
+    assert_operator result[:risk_score], :<=, 30
+  end
+
+  test "normal external button is safe without other suspicious indicators" do
+    result = UrlRiskAnalyzer.call("https://example-shop.com/products/desk-chair", source: "browser-wide-extension", hidden_link: true, link_text: "Shop now")
+
+    assert_equal "safe", result[:risk_level]
+    assert_operator result[:risk_score], :<=, 30
+  end
+
+  test "visible domain mismatch is blocked" do
+    result = UrlRiskAnalyzer.call("https://fake-domain.net/login", source: "browser-wide-extension", link_text: "https://booking.com")
+
+    assert_equal "blocked", result[:risk_level]
+    assert result[:reasons].any? { |reason| reason.include?("Visible link text shows booking.com") }
+  end
+
   test "fake booking payment domain is blocked" do
     result = UrlRiskAnalyzer.call("https://booking-secure-payment.com/login")
 
