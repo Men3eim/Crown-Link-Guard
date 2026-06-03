@@ -1,7 +1,10 @@
 class UrlRiskAnalyzer
   SHORTENERS = %w[bit.ly tinyurl.com cutt.ly t.co shorturl.at].freeze
-  SUSPICIOUS_KEYWORDS = %w[payment verify secure login update account reservation billing partner support confirmation invoice].freeze
+  SUSPICIOUS_KEYWORDS = %w[payment verify secure login update account reservation billing partner support confirmation invoice password credentials authenticate wallet refund payout].freeze
   SUSPICIOUS_TLDS = %w[xyz top tk info click site online].freeze
+  DANGEROUS_FILE_EXTENSIONS = %w[exe scr bat cmd com pif js jse vbs vbe msi ps1 iso img dmg apk jar].freeze
+  RISKY_FILE_EXTENSIONS = %w[zip rar 7z gz html htm pdf doc docx xls xlsx].freeze
+  REDIRECT_PARAMETERS = %w[url uri redirect redirect_uri return return_url continue next target destination dest].freeze
 
   def self.call(url, metadata = {})
     new(url, metadata).call
@@ -85,6 +88,7 @@ class UrlRiskAnalyzer
     url_downcase = @normalizer.normalized_url.to_s.downcase
     domain = @normalizer.domain.to_s
     labels = domain.split(".")
+    uri = URI.parse(@normalizer.normalized_url)
 
     if SHORTENERS.include?(domain)
       @score += 55
@@ -127,9 +131,64 @@ class UrlRiskAnalyzer
       @reasons << "URL uses HTTP instead of HTTPS"
     end
 
+    if uri.userinfo.present? || @normalizer.normalized_url.include?("@")
+      @score += 40
+      @reasons << "URL contains an @ sign or embedded credentials, which can hide the real destination"
+    end
+
+    if uri.port && ![80, 443].include?(uri.port)
+      @score += 15
+      @reasons << "URL uses a non-standard network port"
+    end
+
+    if @normalizer.normalized_url.length > 180
+      @score += 15
+      @reasons << "URL is unusually long"
+    end
+
+    if domain.count("-") >= 3
+      @score += 15
+      @reasons << "Domain contains many hyphens, a common impersonation pattern"
+    end
+
+    if domain.gsub(/[^0-9]/, "").length >= 6
+      @score += 15
+      @reasons << "Domain contains many numbers, which can indicate disposable infrastructure"
+    end
+
+    file_extension = File.extname(uri.path.to_s).delete(".").downcase
+    if DANGEROUS_FILE_EXTENSIONS.include?(file_extension)
+      @score += 60
+      @reasons << "URL points to a potentially dangerous executable or script file"
+    elsif RISKY_FILE_EXTENSIONS.include?(file_extension)
+      @score += 15
+      @reasons << "URL points to a file download that should be verified before opening"
+    end
+
+    if encoded_redirect_parameter?(uri.query.to_s)
+      @score += 20
+      @reasons << "URL contains a redirect parameter that may hide the final destination"
+    end
+
     if ActiveModel::Type::Boolean.new.cast(@metadata[:hidden_link])
       @score += 15
       @reasons << "Link may be hidden behind an image or button"
+    end
+  rescue URI::InvalidURIError
+    @score += 30
+    @reasons << "URL structure is unusual and could not be parsed cleanly"
+  end
+
+  def encoded_redirect_parameter?(query)
+    return false if query.blank?
+
+    query.split("&").any? do |pair|
+      key, value = pair.split("=", 2)
+      next false if key.blank? || value.blank?
+
+      REDIRECT_PARAMETERS.include?(URI.decode_www_form_component(key).downcase) && URI.decode_www_form_component(value).match?(/\Ahttps?:\/\//i)
+    rescue ArgumentError
+      false
     end
   end
 

@@ -2,12 +2,12 @@
   "manifest_version": 3,
   "name": "Crown Link Guard",
   "version": "1.0.0",
-  "description": "Checks Zoho Desk links before Crown agents open them.",
-  "permissions": ["storage", "activeTab", "scripting"],
-  "host_permissions": ["https://desk.zoho.com/*", "https://*.zohodesk.com/*", "https://support.stayzltd.com/*", "http://localhost:3000/*", "https://linkguard.crownbs.local/*"],
+  "description": "Checks external web links before Crown agents open them.",
+  "permissions": ["storage"],
+  "host_permissions": ["http://*/*", "https://*/*"],
   "content_scripts": [
     {
-      "matches": ["https://desk.zoho.com/*", "https://*.zohodesk.com/*", "https://support.stayzltd.com/*"],
+      "matches": ["http://*/*", "https://*/*"],
       "js": ["src/config.js", "src/api.js", "src/modal.js", "src/content.js"],
       "run_at": "document_start"
     }

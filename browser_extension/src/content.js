@@ -1,9 +1,6 @@
 const crownLinkGuardSafeCache = new Map();
 const CROWN_LINK_GUARD_CACHE_MS = 10 * 60 * 1000;
-const CROWN_LINK_GUARD_INTERNAL_HOSTS = [
-  "desk.zoho.com",
-  "support.stayzltd.com"
-];
+const CROWN_LINK_GUARD_IGNORED_HOSTS = ["localhost", "127.0.0.1", "::1"];
 
 function crownLinkGuardTicketId() {
   const match = window.location.href.match(/tickets\/(\d+)/i) || window.location.href.match(/[?&]ticketId=(\d+)/i);
@@ -20,15 +17,23 @@ function crownLinkGuardIsSafeCached(url) {
   return true;
 }
 
-function crownLinkGuardOpen(url) {
-  window.open(url, "_blank", "noopener");
+function crownLinkGuardOpen(url, anchor) {
+  if (anchor && (anchor.target === "_blank" || eventMetaKeyPressed(anchor))) {
+    window.open(url, "_blank", "noopener");
+  } else {
+    window.location.assign(url);
+  }
 }
 
-function crownLinkGuardInternalHost(hostname) {
-  return CROWN_LINK_GUARD_INTERNAL_HOSTS.includes(hostname) || hostname.endsWith(".zohodesk.com") || hostname.endsWith(".zoho.com");
+function eventMetaKeyPressed(anchor) {
+  return anchor.dataset.crownLinkGuardOpenNewTab === "true";
 }
 
-function crownLinkGuardShouldScan(anchor) {
+function crownLinkGuardIgnoredHost(hostname) {
+  return CROWN_LINK_GUARD_IGNORED_HOSTS.includes(hostname);
+}
+
+function crownLinkGuardShouldScan(anchor, event) {
   const rawHref = anchor.getAttribute("href") || "";
   const trimmedHref = rawHref.trim().toLowerCase();
 
@@ -45,7 +50,8 @@ function crownLinkGuardShouldScan(anchor) {
 
   if (!["http:", "https:"].includes(destination.protocol)) return false;
   if (destination.origin === window.location.origin) return false;
-  if (crownLinkGuardInternalHost(destination.hostname)) return false;
+  if (crownLinkGuardIgnoredHost(destination.hostname)) return false;
+  if (event && event.defaultPrevented) return false;
 
   return true;
 }
@@ -62,21 +68,22 @@ async function crownLinkGuardScan(url, anchor) {
     ticket_id: crownLinkGuardTicketId(),
     agent_email: config.agentEmail,
     agent_name: config.agentName,
-    source: "zoho-desk-extension",
+    source: "browser-wide-extension",
     hidden_link: crownLinkGuardHiddenLink(anchor)
   });
 }
 
 document.addEventListener("click", async (event) => {
   const anchor = event.target.closest && event.target.closest("a[href]");
-  if (!anchor || !crownLinkGuardShouldScan(anchor)) return;
+  if (!anchor || !crownLinkGuardShouldScan(anchor, event)) return;
 
   event.preventDefault();
   event.stopPropagation();
+  anchor.dataset.crownLinkGuardOpenNewTab = (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) ? "true" : "false";
 
   const url = anchor.href;
   if (crownLinkGuardIsSafeCached(url)) {
-    crownLinkGuardOpen(url);
+    crownLinkGuardOpen(url, anchor);
     return;
   }
 
@@ -86,11 +93,11 @@ document.addEventListener("click", async (event) => {
 
     if (scan.risk_level === "safe") {
       crownLinkGuardSafeCache.set(url, Date.now() + CROWN_LINK_GUARD_CACHE_MS);
-      crownLinkGuardOpen(url);
+      crownLinkGuardOpen(url, anchor);
       return;
     }
 
-    crownLinkGuardShowModal(scan, url, () => crownLinkGuardOpen(url));
+    crownLinkGuardShowModal(scan, url, () => crownLinkGuardOpen(url, anchor));
   } catch (_error) {
     crownLinkGuardShowModal({
       risk_level: "high_risk",

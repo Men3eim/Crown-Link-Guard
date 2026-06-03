@@ -12,7 +12,7 @@ Internal phishing link protection for Crown Business Solutions Zoho Desk agents.
   - `POST /api/v1/actions`
 - URL normalization, domain matching, risk scoring, scan logging, and audit logging services.
 - Admin dashboard for scans, reports, allowlisted domains, blocked domains, settings, audit logs, and CSV export.
-- Manifest V3 Chrome/Edge extension scaffold that intercepts Zoho Desk links before navigation.
+- Manifest V3 Chrome/Edge extension that intercepts external web links across normal browser pages before navigation.
 - Seed data for the initial admin, trusted domains, risk thresholds, and extension API token.
 
 ## Local Setup
@@ -46,6 +46,10 @@ export CROWN_LINK_GUARD_API_TOKEN="replace-this-token"
    - Backend URL: `http://localhost:3000` for local testing.
    - API token: the seeded or environment token.
    - Agent email/name for scan and report metadata.
+
+The extension runs on normal `http://` and `https://` pages. It ignores same-site navigation, same-page anchors, browser UI links, `mailto:`, `tel:`, and `javascript:` controls so normal page buttons keep working. It scans outbound web links before the browser opens them.
+
+Chrome does not allow extensions to run on protected browser pages such as `chrome://`, the Chrome Web Store, or some extension/admin pages.
 
 Production deployment should use managed browser policy or GPO and a managed token configuration.
 

@@ -1,8 +1,10 @@
 function crownLinkGuardDetailsText(scan, url, ticketUrl) {
+  const locationLabel = crownLinkGuardTicketId() ? "Ticket:" : "Page:";
+
   return [
     "Please review this suspicious link:",
     "",
-    "Ticket:",
+    locationLabel,
     ticketUrl || window.location.href,
     "",
     "URL:",
@@ -100,7 +102,7 @@ function crownLinkGuardShowModal(scan, url, onContinue) {
       agent_name: config.agentName,
       agent_note: "Reported from the Crown Link Guard browser extension."
     });
-    await crownLinkGuardCopy(`Hi Ahmed, I found a suspicious link in this Zoho Desk ticket. Please review it.\n\nTicket:\n${ticketUrl}\n\nURL:\n${url}`);
+    await crownLinkGuardCopy(`Hi Ahmed, I found a suspicious link while browsing. Please review it.\n\nPage:\n${ticketUrl}\n\nURL:\n${url}`);
     logAction("reported");
     alert("Reported successfully. Please do not open the link until it is reviewed.");
     close();

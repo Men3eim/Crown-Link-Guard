@@ -48,4 +48,25 @@ class UrlRiskAnalyzerTest < ActiveSupport::TestCase
     assert_equal "blocked", result[:risk_level]
     assert result[:reasons].any? { |reason| reason.include?("blocklist") }
   end
+
+  test "executable download from unknown domain is blocked" do
+    result = UrlRiskAnalyzer.call("https://files-example.net/update.exe")
+
+    assert_equal "blocked", result[:risk_level]
+    assert result[:reasons].any? { |reason| reason.include?("executable") }
+  end
+
+  test "at sign destination trick is high risk or blocked" do
+    result = UrlRiskAnalyzer.call("https://booking.com@fake-domain.net/login")
+
+    assert_includes %w[high_risk blocked], result[:risk_level]
+    assert result[:reasons].any? { |reason| reason.include?("@ sign") }
+  end
+
+  test "encoded redirect parameter increases risk" do
+    result = UrlRiskAnalyzer.call("https://unknown-example.net/login?redirect=https%3A%2F%2Ffake-payments.example")
+
+    assert_includes %w[high_risk blocked], result[:risk_level]
+    assert result[:reasons].any? { |reason| reason.include?("redirect parameter") }
+  end
 end
