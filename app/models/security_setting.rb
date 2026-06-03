@@ -10,7 +10,14 @@ class SecuritySetting < ApplicationRecord
     "ahmed_contact_email" => "ahmed.moniem@crownbs.com",
     "team_leader_instructions" => "Please ask your Team Leader before opening this link. Keep the ticket open and do not click until verified.",
     "internal_system_name" => "Crown Link Guard",
-    "extension_allowed_version" => "1.0.0"
+    "extension_allowed_version" => "1.0.0",
+    "enable_brand_impersonation" => "true",
+    "enable_domain_reputation" => "true",
+    "enable_redirect_scanning" => "true",
+    "scan_redirects_for_all_links" => "false",
+    "enable_threat_intelligence" => "true",
+    "google_safe_browsing_api_key" => "",
+    "virustotal_api_key" => ""
   }.freeze
 
   def self.fetch_value(key)

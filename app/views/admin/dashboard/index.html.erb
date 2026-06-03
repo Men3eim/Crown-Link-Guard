@@ -5,8 +5,11 @@
   <div class="card"><strong><%= @stats[:blocked_today] %></strong><span>Blocked links today</span></div>
   <div class="card"><strong><%= @stats[:high_risk_today] %></strong><span>High-risk links today</span></div>
   <div class="card"><strong><%= @stats[:medium_risk_today] %></strong><span>Medium-risk links today</span></div>
+  <div class="card"><strong><%= @stats[:safe_today] %></strong><span>Safe links today</span></div>
+  <div class="card"><strong><%= @stats[:scanned_this_week] %></strong><span>Scanned links this week</span></div>
   <div class="card"><strong><%= @stats[:pending_reports] %></strong><span>Pending reports</span></div>
   <div class="card"><strong><%= @stats[:phishing_reports] %></strong><span>Confirmed phishing reports</span></div>
+  <div class="card"><strong><%= @stats[:safe_reports] %></strong><span>Reports marked safe</span></div>
 </section>
 
 <section class="panel">
@@ -22,6 +25,38 @@
     </table>
   <% else %>
     <p class="muted">No suspicious domains yet.</p>
+  <% end %>
+</section>
+
+<section class="panel">
+  <h2>Top Risk Reasons</h2>
+  <% if @top_reasons.any? %>
+    <table>
+      <thead><tr><th>Reason</th><th>Count</th></tr></thead>
+      <tbody>
+        <% @top_reasons.each do |reason, count| %>
+          <tr><td><%= reason %></td><td><%= count %></td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="muted">No risk reasons yet.</p>
+  <% end %>
+</section>
+
+<section class="panel">
+  <h2>Scan Volume This Week</h2>
+  <% if @daily_scan_counts.any? %>
+    <table>
+      <thead><tr><th>Date</th><th>Scans</th></tr></thead>
+      <tbody>
+        <% @daily_scan_counts.each do |day, count| %>
+          <tr><td><%= day %></td><td><%= count %></td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="muted">No scans this week.</p>
   <% end %>
 </section>
 

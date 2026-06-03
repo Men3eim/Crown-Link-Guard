@@ -25,6 +25,8 @@ class UrlRiskAnalyzer
     @matcher = DomainMatcher.new(@normalizer.domain)
     apply_domain_rules
     apply_url_rules
+    apply_redirect_rules
+    apply_threat_intelligence_rules
     @score = [[@score, 0].max, 100].min
 
     {
@@ -82,6 +84,20 @@ class UrlRiskAnalyzer
     elsif @matcher.resembles_trusted_domain?
       @score += 35
       @reasons << "Domain looks similar to an official Crown or OTA domain but is not official"
+    end
+
+    if SecuritySetting.boolean("enable_brand_impersonation")
+      brand_result = BrandImpersonationDetector.call(@normalizer.domain)
+      if brand_result.matched?
+        @score += brand_result.score
+        @reasons << brand_result.reason
+      end
+    end
+
+    if SecuritySetting.boolean("enable_domain_reputation")
+      reputation = DomainReputationAnalyzer.call(@normalizer.domain)
+      @score += reputation.score
+      @reasons.concat(reputation.reasons)
     end
   end
 
@@ -193,6 +209,54 @@ class UrlRiskAnalyzer
       @score += 65
       @reasons << "Visible link text shows #{mismatched_domain}, but the real destination is #{@normalizer.domain}"
     end
+  end
+
+  def apply_redirect_rules
+    return unless SecuritySetting.boolean("enable_redirect_scanning")
+    return unless should_scan_redirects?
+
+    redirect_result = RedirectChainScanner.call(@normalizer.normalized_url)
+    if redirect_result.checked? && redirect_result.chain.length > 1
+      @reasons << "Redirect chain detected: #{redirect_result.chain.length} hops"
+      if redirect_result.changed_domain?
+        @score += 35
+        @reasons << "URL redirects to a different domain: #{redirect_result.final_domain}"
+      end
+
+      brand_result = BrandImpersonationDetector.call(redirect_result.final_domain)
+      if brand_result.matched?
+        @score += brand_result.score
+        @reasons << "Final redirected domain: #{brand_result.reason}"
+      end
+    elsif !redirect_result.checked? && SHORTENERS.include?(@normalizer.domain)
+      @score += 15
+      @reasons << "Could not verify shortener redirect destination"
+    end
+  end
+
+  def apply_threat_intelligence_rules
+    return unless SecuritySetting.boolean("enable_threat_intelligence")
+
+    result = ThreatIntelligenceChecker.call(@normalizer.normalized_url)
+    return unless result.checked?
+
+    if result.malicious?
+      @score += 100
+      @reasons << result.reason
+    elsif result.suspicious?
+      @score += 45
+      @reasons << result.reason
+    end
+  end
+
+  def should_scan_redirects?
+    return true if SecuritySetting.boolean("scan_redirects_for_all_links")
+    return true if SHORTENERS.include?(@normalizer.domain)
+
+    uri = URI.parse(@normalizer.normalized_url)
+    encoded_redirect_parameter?(uri.query.to_s)
+  rescue URI::InvalidURIError
+    false
   end
 
   def normalized_visible_domain(candidate)

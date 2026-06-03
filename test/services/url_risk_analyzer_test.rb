@@ -6,7 +6,10 @@ class UrlRiskAnalyzerTest < ActiveSupport::TestCase
     BlockedDomain.delete_all
     SecuritySetting.delete_all
 
-    SecuritySetting::DEFAULTS.each { |key, value| SecuritySetting.create!(key: key, value: value) }
+    SecuritySetting::DEFAULTS.merge(
+      "enable_redirect_scanning" => "false",
+      "enable_threat_intelligence" => "false"
+    ).each { |key, value| SecuritySetting.create!(key: key, value: value) }
     AllowlistedDomain.create!(domain: "booking.com", allow_subdomains: true, active: true)
     AllowlistedDomain.create!(domain: "eviivo.com", allow_subdomains: true, active: true)
     BlockedDomain.create!(domain: "known-phishing.test", severity: "critical", active: true)
@@ -47,6 +50,20 @@ class UrlRiskAnalyzerTest < ActiveSupport::TestCase
     assert_equal "blocked", result[:risk_level]
     assert_operator result[:risk_score], :>=, 81
     assert result[:reasons].any? { |reason| reason.include?("not official") }
+  end
+
+  test "brand typo squatting is high risk or blocked" do
+    result = UrlRiskAnalyzer.call("https://b00king-login.com/account", source: "browser-wide-extension")
+
+    assert_includes %w[high_risk blocked], result[:risk_level]
+    assert result[:reasons].any? { |reason| reason.include?("Booking.com") }
+  end
+
+  test "dynamic dns login link is high risk" do
+    result = UrlRiskAnalyzer.call("https://hotel-payment.duckdns.org/login", source: "browser-wide-extension")
+
+    assert_includes %w[high_risk blocked], result[:risk_level]
+    assert result[:reasons].any? { |reason| reason.include?("dynamic DNS") }
   end
 
   test "booking suffix trick is blocked" do

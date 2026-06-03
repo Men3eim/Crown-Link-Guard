@@ -56,6 +56,30 @@ class AdminDashboardTest < ActionDispatch::IntegrationTest
     assert_not AllowlistedDomain.find_by(domain: "example.test").active?
   end
 
+  test "marking report safe teaches allowlist" do
+    login_as_admin
+    report = AgentReport.create!(original_url: "https://safe-review.test", normalized_url: "https://safe-review.test", domain: "safe-review.test", risk_score: 40, risk_level: "medium_risk", status: "pending")
+    BlockedDomain.create!(domain: "safe-review.test", severity: "high", active: true)
+
+    patch admin_report_path(report), params: { agent_report: { status: "safe", reviewer_note: "Verified partner" } }
+
+    assert_redirected_to admin_reports_path
+    assert AllowlistedDomain.find_by(domain: "safe-review.test").active?
+    assert_not BlockedDomain.find_by(domain: "safe-review.test").active?
+  end
+
+  test "marking report phishing teaches blocklist" do
+    login_as_admin
+    report = AgentReport.create!(original_url: "https://bad-review.test", normalized_url: "https://bad-review.test", domain: "bad-review.test", risk_score: 70, risk_level: "high_risk", status: "pending")
+    AllowlistedDomain.create!(domain: "bad-review.test", allow_subdomains: false, active: true)
+
+    patch admin_report_path(report), params: { agent_report: { status: "phishing", reviewer_note: "Confirmed attack" } }
+
+    assert_redirected_to admin_reports_path
+    assert BlockedDomain.find_by(domain: "bad-review.test").active?
+    assert_not AllowlistedDomain.find_by(domain: "bad-review.test").active?
+  end
+
   private
 
   def login_as_admin

@@ -53,6 +53,39 @@ Chrome does not allow extensions to run on protected browser pages such as `chro
 
 Production deployment should use managed browser policy or GPO and a managed token configuration.
 
+## Smart Link Intelligence
+
+Crown Link Guard combines several signals instead of treating every unknown link as dangerous:
+
+- Local allowlist and blocklist decisions.
+- Brand impersonation detection for Booking.com, Expedia, Eviivo, Zoho, Crown BS, Microsoft, Google, PayPal, DocuSign, Dropbox, and Adobe.
+- Visible link text versus real destination checks.
+- Suspicious keyword, TLD, IP, punycode, encoded URL, `@` trick, and dangerous download detection.
+- Free hosting and dynamic DNS reputation signals.
+- Redirect-chain checks for shorteners and redirect-looking URLs.
+- Optional Google Safe Browsing and VirusTotal checks when API keys are configured.
+- Admin feedback loop: marking a report `safe` trusts the domain; marking it `phishing` blocks it.
+
+Optional threat intelligence keys can be configured through environment variables:
+
+```sh
+export GOOGLE_SAFE_BROWSING_API_KEY="..."
+export VIRUSTOTAL_API_KEY="..."
+```
+
+Or from Admin -> Settings:
+
+```text
+google_safe_browsing_api_key
+virustotal_api_key
+```
+
+For performance, full redirect scanning for every link is off by default. It can be enabled in Admin -> Settings with:
+
+```text
+scan_redirects_for_all_links = true
+```
+
 ## Important Deployment Rule
 
 Do not install or host Crown Link Guard on the Active Directory Domain Controller.

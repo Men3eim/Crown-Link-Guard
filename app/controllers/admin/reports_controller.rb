@@ -22,6 +22,7 @@ class Admin::ReportsController < Admin::BaseController
       reviewer_email: current_user.email,
       reviewed_at: Time.current
     )
+    apply_review_feedback!(@report)
     audit!("report_status_updated", @report, status: @report.status)
     redirect_to admin_reports_path, notice: "Report updated."
   end
@@ -82,6 +83,35 @@ class Admin::ReportsController < Admin::BaseController
       reports.find_each do |report|
         csv << [report.created_at, report.agent_email, report.normalized_url || report.original_url, report.domain, report.ticket_url, report.risk_level, report.status, report.reviewer_email, report.reviewer_note]
       end
+    end
+  end
+
+  def apply_review_feedback!(report)
+    return if report.domain.blank?
+
+    case report.status
+    when "safe"
+      entry = AllowlistedDomain.find_or_initialize_by(domain: report.domain)
+      entry.assign_attributes(
+        allow_subdomains: false,
+        notes: entry.notes.presence || "Auto-trusted after report ##{report.id} was reviewed as safe",
+        created_by: entry.created_by.presence || current_user.email,
+        active: true
+      )
+      entry.save!
+      BlockedDomain.where(domain: report.domain, active: true).update_all(active: false, updated_at: Time.current)
+      audit!("report_feedback_allowlisted_domain", entry, report_id: report.id)
+    when "phishing"
+      entry = BlockedDomain.find_or_initialize_by(domain: report.domain)
+      entry.assign_attributes(
+        severity: entry.severity.presence || "critical",
+        reason: entry.reason.presence || "Auto-blocked after report ##{report.id} was confirmed phishing",
+        created_by: entry.created_by.presence || current_user.email,
+        active: true
+      )
+      entry.save!
+      AllowlistedDomain.where(domain: report.domain, active: true).update_all(active: false, updated_at: Time.current)
+      audit!("report_feedback_blocked_domain", entry, report_id: report.id)
     end
   end
 end
