@@ -28,26 +28,38 @@ class Admin::ReportsController < Admin::BaseController
 
   def allow_domain
     report = AgentReport.find(params[:id])
-    domain = AllowlistedDomain.find_or_create_by!(domain: report.domain) do |entry|
-      entry.allow_subdomains = false
-      entry.notes = "Added from report ##{report.id}"
-      entry.created_by = current_user.email
-      entry.active = true
-    end
+    return redirect_to admin_reports_path, alert: "This report has no domain to allow." if report.domain.blank?
+
+    domain = AllowlistedDomain.find_or_initialize_by(domain: report.domain)
+    domain.assign_attributes(
+      allow_subdomains: false,
+      notes: domain.notes.presence || "Added from report ##{report.id}",
+      created_by: domain.created_by.presence || current_user.email,
+      active: true
+    )
+    domain.save!
+    disabled_blocks = BlockedDomain.where(domain: report.domain, active: true).update_all(active: false, updated_at: Time.current)
+
     audit!("allowlisted_domain_from_report", domain, report_id: report.id)
-    redirect_to admin_reports_path, notice: "#{report.domain} added to allowlist."
+    redirect_to admin_reports_path, notice: "#{report.domain} is now trusted. #{disabled_blocks} conflicting blocklist entry disabled."
   end
 
   def block_domain
     report = AgentReport.find(params[:id])
-    domain = BlockedDomain.find_or_create_by!(domain: report.domain) do |entry|
-      entry.severity = "critical"
-      entry.reason = "Added from report ##{report.id}"
-      entry.created_by = current_user.email
-      entry.active = true
-    end
+    return redirect_to admin_reports_path, alert: "This report has no domain to block." if report.domain.blank?
+
+    domain = BlockedDomain.find_or_initialize_by(domain: report.domain)
+    domain.assign_attributes(
+      severity: domain.severity.presence || "critical",
+      reason: domain.reason.presence || "Added from report ##{report.id}",
+      created_by: domain.created_by.presence || current_user.email,
+      active: true
+    )
+    domain.save!
+    disabled_allows = AllowlistedDomain.where(domain: report.domain, active: true).update_all(active: false, updated_at: Time.current)
+
     audit!("blocked_domain_from_report", domain, report_id: report.id)
-    redirect_to admin_reports_path, notice: "#{report.domain} added to blocklist."
+    redirect_to admin_reports_path, notice: "#{report.domain} is now blocked. #{disabled_allows} conflicting allowlist entry disabled."
   end
 
   private

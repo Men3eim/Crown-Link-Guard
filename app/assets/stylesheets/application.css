@@ -57,6 +57,10 @@ th { color: #4b5a68; background: #f1f4f7; font-size: 12px; text-transform: upper
 td.url { max-width: 360px; word-break: break-word; }
 
 .filters, .form-grid { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 16px; }
+.form-grid.compact { align-items: center; gap: 8px; margin-bottom: 10px; }
+.form-grid.compact .field { min-width: 145px; }
+.domain-edit-form { margin-bottom: 8px; }
+.checkbox { align-items: center; display: inline-flex; gap: 6px; min-height: 36px; }
 .field { display: flex; flex-direction: column; gap: 5px; min-width: 180px; }
 label { color: #4b5a68; font-size: 13px; }
 input, select, textarea {

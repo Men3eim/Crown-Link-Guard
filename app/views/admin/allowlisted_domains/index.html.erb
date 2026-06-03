@@ -13,17 +13,26 @@
 
 <section class="panel">
   <table>
-    <thead><tr><th>Domain</th><th>Subdomains</th><th>Active</th><th>Notes</th><th>Actions</th></tr></thead>
+    <thead><tr><th>Domain</th><th>Subdomains</th><th>Active</th><th>Notes</th><th>Manage</th></tr></thead>
     <tbody>
       <% @allowlisted_domains.each do |domain| %>
         <tr>
-          <%= form_with model: [:admin, domain], local: true do |form| %>
-            <td><%= form.text_field :domain %></td>
-            <td><%= form.check_box :allow_subdomains %></td>
-            <td><%= form.check_box :active %></td>
-            <td><%= form.text_field :notes %></td>
-            <td class="actions"><%= form.submit "Save", class: "button secondary" %><%= button_to "Remove", admin_allowlisted_domain_path(domain), method: :delete, class: "danger" %></td>
-          <% end %>
+          <td><strong><%= domain.domain %></strong></td>
+          <td><%= domain.allow_subdomains? ? "Yes" : "No" %></td>
+          <td><%= domain.active? ? "Active" : "Disabled" %></td>
+          <td><%= domain.notes.presence || "-" %></td>
+          <td>
+            <%= form_with model: [:admin, domain], local: true, class: "domain-edit-form" do |form| %>
+              <div class="form-grid compact">
+                <div class="field"><%= form.label :domain %><%= form.text_field :domain, required: true %></div>
+                <div class="field"><%= form.label :notes %><%= form.text_field :notes %></div>
+                <label class="checkbox"><%= form.check_box :allow_subdomains %> Allow subdomains</label>
+                <label class="checkbox"><%= form.check_box :active %> Active</label>
+                <%= form.submit "Save changes", class: "button secondary" %>
+              </div>
+            <% end %>
+            <%= button_to "Remove domain", admin_allowlisted_domain_path(domain), method: :delete, class: "danger", form: { data: { turbo_confirm: "Remove #{domain.domain} from the allowlist?" } } %>
+          </td>
         </tr>
       <% end %>
     </tbody>

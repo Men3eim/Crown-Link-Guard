@@ -16,26 +16,38 @@ class Admin::UrlScansController < Admin::BaseController
 
   def allow_domain
     scan = UrlScan.find(params[:id])
-    domain = AllowlistedDomain.find_or_create_by!(domain: scan.domain) do |entry|
-      entry.allow_subdomains = false
-      entry.notes = "Added from scan ##{scan.id}"
-      entry.created_by = current_user.email
-      entry.active = true
-    end
+    return redirect_to admin_url_scans_path, alert: "This scan has no domain to allow." if scan.domain.blank?
+
+    domain = AllowlistedDomain.find_or_initialize_by(domain: scan.domain)
+    domain.assign_attributes(
+      allow_subdomains: false,
+      notes: domain.notes.presence || "Added from scan ##{scan.id}",
+      created_by: domain.created_by.presence || current_user.email,
+      active: true
+    )
+    domain.save!
+    disabled_blocks = BlockedDomain.where(domain: scan.domain, active: true).update_all(active: false, updated_at: Time.current)
+
     audit!("allowlisted_domain_from_scan", domain, scan_id: scan.id)
-    redirect_to admin_url_scans_path, notice: "#{scan.domain} added to allowlist."
+    redirect_to admin_url_scans_path, notice: "#{scan.domain} is now trusted. #{disabled_blocks} conflicting blocklist entry disabled."
   end
 
   def block_domain
     scan = UrlScan.find(params[:id])
-    domain = BlockedDomain.find_or_create_by!(domain: scan.domain) do |entry|
-      entry.severity = "high"
-      entry.reason = "Added from scan ##{scan.id}"
-      entry.created_by = current_user.email
-      entry.active = true
-    end
+    return redirect_to admin_url_scans_path, alert: "This scan has no domain to block." if scan.domain.blank?
+
+    domain = BlockedDomain.find_or_initialize_by(domain: scan.domain)
+    domain.assign_attributes(
+      severity: domain.severity.presence || "high",
+      reason: domain.reason.presence || "Added from scan ##{scan.id}",
+      created_by: domain.created_by.presence || current_user.email,
+      active: true
+    )
+    domain.save!
+    disabled_allows = AllowlistedDomain.where(domain: scan.domain, active: true).update_all(active: false, updated_at: Time.current)
+
     audit!("blocked_domain_from_scan", domain, scan_id: scan.id)
-    redirect_to admin_url_scans_path, notice: "#{scan.domain} added to blocklist."
+    redirect_to admin_url_scans_path, notice: "#{scan.domain} is now blocked. #{disabled_allows} conflicting allowlist entry disabled."
   end
 
   private
